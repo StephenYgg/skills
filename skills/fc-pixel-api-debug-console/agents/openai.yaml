@@ -1,0 +1,4 @@
+interface:
+  display_name: "FC Pixel API Debug Console"
+  short_description: "FC pixel single-page API debuggers"
+  default_prompt: "Use $fc-pixel-api-debug-console to build a single-file FC Pixel API debugging console."
