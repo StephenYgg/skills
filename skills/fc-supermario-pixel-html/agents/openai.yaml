@@ -1,0 +1,4 @@
+interface:
+  display_name: "FC Super Mario Pixel HTML"
+  short_description: "Build interactive FC pixel UI pages"
+  default_prompt: "Use $fc-supermario-pixel-html with $ui-ux-pro-max to build a rich static pixel UI with sprite-based buttons, icons, panels, and background animation."
