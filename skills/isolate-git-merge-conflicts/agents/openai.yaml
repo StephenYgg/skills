@@ -1,0 +1,4 @@
+interface:
+  display_name: "Git 合并冲突隔离"
+  short_description: "在独立 _merge 分支解决冲突并同步源分支更新"
+  default_prompt: "Use $isolate-git-merge-conflicts to resolve this Git merge conflict without contaminating the source branch."
