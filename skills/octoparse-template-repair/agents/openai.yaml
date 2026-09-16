@@ -1,4 +1,4 @@
 interface:
   display_name: "Octoparse Template Repair"
   short_description: "筛选待修模板、下载 RuleFile 并形成可执行诊断与修复报告"
-  default_prompt: "Use $octoparse-template-repair to inspect the pending template repair queue, claim a named template with guarded owner/status updates, run an MCP execute_task baseline when available, diagnose it, and ask whether the repaired candidate should be migrated to a 304-group octopus-platform-sdk script. After MCP revalidation, wait for explicit confirmation before writing 原因/评论/截图; keep 处理中. Set 已完成 only when 验收成功（需求人填写） is checked."
+  default_prompt: "Use $octoparse-template-repair to inspect the pending template repair queue, claim a named template with guarded owner/status updates, run an MCP execute_task baseline when available, diagnose it, and ask whether the repaired candidate should be migrated to a 304-group octopus-platform-sdk script. After MCP export, verify every field has a value and list blanks; only the user may ignore named fields. Wait for explicit confirmation before writing 原因/评论/截图; keep 处理中. Set 已完成 only when 验收成功（需求人填写） is checked."

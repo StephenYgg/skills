@@ -28,11 +28,12 @@ Write the report in the language used by the requester. Include all sections bel
 - MCP baseline task ID/status/result when `execute_task` was available; explicitly mark it unavailable otherwise
 - observed request status and parser/runtime signals
 - upload count, exit/final status, and whether the issue reproduced
+- exported field completeness: every output field, which were empty, and any fields the user explicitly said to ignore
 - failed attempts or environmental limits, clearly separated from successful checks
 
 When the user confirms that the repair is complete, add a separate revalidation record with a newly created MCP task ID. Compare it with the baseline task's input, terminal status, row count, required fields, and error/stop reason. Never report a resumed baseline task as a post-repair validation.
 
-After a successful revalidation, record that 原因 / 评论 / 截图 were **not** written until the user explicitly confirmed that write-up. If they were written, record that confirmation. `当前状态` stayed `处理中` unless `验收成功（需求人填写）` was already checked. Never report `已完成` from MCP success or a repair write-up alone.
+After a successful revalidation, record the exported field audit (empty field names, and any user-ignored fields). 原因 / 评论 / 截图 must not be written until that audit is complete **and** the user explicitly confirmed the write-up. `当前状态` stayed `处理中` unless `验收成功（需求人填写）` was already checked. Never report the repair as done from MCP row count alone. Never report `已完成` from MCP success or a repair write-up alone.
 
 `当前状态 = 已完成` is allowed only after a fresh read shows `验收成功（需求人填写）` checked. Record that check, the write result, and `处理完成时间`. If the checkbox was empty, record that 已完成 was refused.
 

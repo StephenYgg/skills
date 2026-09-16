@@ -45,9 +45,18 @@ When the user says to process/fix a specific template, first refresh that record
 - When claiming the record, ask `预计多久可以完成？` before setting an estimate. If the user supplies a duration, calculate `预计完成时间` from the claim timestamp and write it with the start transition; if the user does not provide one, leave `预计完成时间` unchanged/blank and continue without guessing.
 - Record the previous owner/status/time fields, the guarded decision, the write result, and the post-write values in the report. Never log access tokens or user IDs beyond the display name needed for the audit.
 
-After a post-repair MCP revalidation task reaches the expected successful data result, **stop**. Do not write `处理结果备注`, do not add the @submitter comment, and do not upload `处理结果截图` on MCP success alone.
+After a post-repair MCP revalidation task finishes, **export the rows**. Having any data is **not** a completed repair.
 
-Ask `MCP 复验已通过，是否把原因、评论和截图写回飞书？（此时不改当前状态为已完成）` and **wait for an explicit yes**. Silence, `已修复`, `开始验证`, or MCP passing is not that yes.
+### Field completeness (required before Feishu write-up)
+
+1. `export_data` (or equivalent) the new MCP task. Inspect every exported row, not only `total` / `collectedRows`.
+2. Take the template output field names from the version output contract when available (`bccc template output-field` / version output schema). If that is missing, use the union of keys on the exported rows.
+3. A field has no value when it is missing, `null`, `""`, or whitespace-only. Check **every** field on **every** exported canary row.
+4. Report the empty fields by name. Example: `以下字段没有值：description, seller`. Non-empty title/price with other blanks is still incomplete.
+5. Do **not** treat empty fields as acceptable unless the user **explicitly** says to ignore those named fields (for example `description 可以忽略`). Guessing optional fields, or inferring from the issue text, does not count.
+6. Only when every field has a value, or every still-empty field was explicitly ignored by the user, may you ask about writing 原因 / 评论 / 截图. Until then: do not write `处理结果备注`, do not comment, do not upload `处理结果截图`.
+
+Then ask `字段已齐（或你已明确忽略：…）。是否把原因、评论和截图写回飞书？（此时不改当前状态为已完成）` and **wait for an explicit yes**. Silence, `已修复`, `开始验证`, MCP passing, or “有数据了” is not that yes.
 
 If the user confirms, refresh the same record and the current field definitions, then:
 
@@ -148,8 +157,8 @@ Read [references/admin-api.md](references/admin-api.md) when diagnosing API rout
 When an Octoparse MCP exposes `execute_task` (or equivalent task-create/poll/data-result tools), use it for a cloud baseline before changing a template:
 
 1. Create one new, bounded task with the exact template ID and the Feishu `问题参数`. Keep the smallest page/item/input limits that can demonstrate the issue.
-2. Poll that task to a terminal state and inspect the returned rows, not only the task status. Record the task ID, effective input, target status/final URL when available, row count, required-field signals, and error/stop reason without recording credentials or large bodies.
-3. Compare the MCP result with the local harness result. A Finished task with zero rows is still a failed data-quality outcome.
+2. Poll that task to a terminal state and **export the rows**. Inspect every field on those rows, not only the task status or row count. Record the task ID, effective input, target status/final URL when available, row count, **which fields are empty**, and error/stop reason without recording credentials or large bodies.
+3. Compare the MCP result with the local harness result. A Finished task with zero rows is still a failed data-quality outcome. A Finished task with rows but blank fields is also incomplete until the user explicitly ignores those fields.
 
 After the user says the repair is complete (for example, `已修复，开始验证`), create a **new** MCP task for revalidation; never resume, retry, or reuse the baseline task. Use the repaired/draft template reference supplied by the user or an explicitly authorized draft version, and run the same bounded input so before/after rows and required fields are comparable. If the repaired file exists only locally and no executable draft/reference is available, stop at local smoke and state that cloud revalidation needs a draft/version or deployment authorization; do not publish one implicitly.
 
