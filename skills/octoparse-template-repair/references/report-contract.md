@@ -29,6 +29,8 @@ Write the report in the language used by the requester. Include all sections bel
 - observed request status and parser/runtime signals
 - upload count, exit/final status, and whether the issue reproduced
 - exported field completeness: every output field, which were empty, and any fields the user explicitly said to ignore
+- `bccc template output-schema get` field names vs repair export (missing/empty)
+- if the original/baseline export had ≥1 row: field-name delta vs repair export; skip this when baseline was 0 rows
 - failed attempts or environmental limits, clearly separated from successful checks
 
 When the user confirms that the repair is complete, add a separate revalidation record with a newly created MCP task ID. Compare it with the baseline task's input, terminal status, row count, required fields, and error/stop reason. Never report a resumed baseline task as a post-repair validation.
