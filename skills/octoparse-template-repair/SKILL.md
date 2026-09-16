@@ -9,8 +9,8 @@ Use this workflow to turn one eligible Feishu repair record into a reproducible 
 
 ## Boundaries
 
-- Treat Feishu Base, Template Admin, and RuleFile URLs as read-only for diagnosis. The user's explicit request to process/fix a named template authorizes only the guarded owner/status transitions in `Record Ownership And Status`; it does not authorize version creation. Publishing (`bccc template publish`) is allowed only after the repair write-up **and** the user separately confirms changing 维护中 to 已发布.
-- Do not add a template version, set a current version, publish, or upload a repaired RuleFile unless the user separately authorizes that operation.
+- Treat Feishu Base, Template Admin, and RuleFile URLs as read-only for diagnosis. The user's explicit request to process/fix a named template authorizes only the guarded owner/status transitions in `Record Ownership And Status`; it does not authorize version creation. Catalog publishing (`bccc template publish`, 维护中 → 已发布) is allowed only after the repair write-up **and** the user separately confirms that catalog change.
+- Do not copy a version, set current, upload a RuleFile, or call `template publish` unless the user separately authorizes that operation. When they ask to ship a new RuleFile version, follow **Ship a repaired RuleFile**.
 - Never echo tokens, proxy credentials, cookies, authorization headers, or signed URL query values. Report their presence and risk without their values.
 - Preserve the downloaded RuleFile byte-for-byte at the template directory root. If implementation is requested, create `<id>-<slug>/fixed/` and put every repaired `.py` working copy there; never place a repaired file beside the original RuleFile.
 - Keep SDK migration output separate from repair output: create `<id>-<slug>/fixed-migration-sdk/` and put migrated 304-group `.py` files there. Do not move, overwrite, or mix files from `fixed/`.
@@ -176,6 +176,45 @@ Keep tests and fixtures outside `fixed/` unless they are part of the executable 
 The preparation script uses temporary files and exclusive destination creation. An existing identical RuleFile is reused; a different existing file or version metadata is a conflict to inspect, not something to overwrite. It refuses a symlink in the `fixed/` path.
 
 Read [references/admin-api.md](references/admin-api.md) when diagnosing API routing, response shape, current-version selection, or a missing RuleFile.
+
+## Ship a repaired RuleFile
+
+Use this only when the user explicitly asks to publish/ship a **new RuleFile version** (not `template copy`, and not catalog `template publish` unless they also asked for 已发布). Use `bccc --json`. Same environment/proxy rules as other `bccc` calls.
+
+Do **not** copy the Template. Copy the **TemplateVersion**.
+
+1. `bccc --json template version list <templateId>` and note the source version (`id` / `version` / `type` / `ruleFile` / `settings`). Source is usually `currentVersion.templateVersionId`.
+2. `bccc --json template version copy <templateId> <sourceVersionId>`. The copy route does **not** accept `isSetCurrent`. The new version exists but is **not** the template current version. The copy response does not include the new id; list versions again and take the new row (new `id`, incremented `version`).
+3. **Before** pointing the template at the copy: upload the repaired file, then write that URL onto the **copy**.
+
+   ```bash
+   bccc --json template file upload --file <repaired.py> --content-type text/x-python
+   ```
+
+   Use `data.uplaodRes` as `ruleFile`. Then `bccc template version update <templateId> <newVersionId> --file body.json` with at least:
+
+   - `type`: same as source (`8` = Python). Always send `type`; omitting it can default to XOML (`0`) and break the version.
+   - `ruleFile`: the upload URL
+   - `isUseProxy`, `canSecondSplit`, `stepTotal`: copy from source unless the repair changed them
+   - `isSetCurrent`: `false` on this write
+
+   Omit `ruleFile` on later updates that must keep the body.
+4. Point the template at the copy. `bccc template version set-current <templateId> <newVersionId>` writes **three fields together** on `template.currentVersion` (do not PATCH them one-by-one, do not invent a template-level JSON of only one of them):
+
+   | Field | Meaning |
+   |---|---|
+   | `templateVersionId` | New version row id |
+   | `version` | Version number (1, 2, …) |
+   | `type` | Script type (`8` = Python) |
+
+   Confirm with `bccc --json template get <templateId>` that those three match the copy.
+5. Then set the copy comment with another `template version update` (no `ruleFile`). Format:
+
+   `yyyyMMdd stephen 修复了<根因>，处理了<做法>`
+
+   Example: `20260916 stephen 修复了Google Play搜索页旧XPath失效导致0数据，处理了稳定详情链接解析并迁移304 SDK`
+
+This is **not** `bccc template publish` (catalog status 1). After set-current, MCP uses the new current RuleFile. Then run the pre-acceptance field audit.
 
 ## MCP Execute And Revalidate
 
