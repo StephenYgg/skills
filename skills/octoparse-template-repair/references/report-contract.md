@@ -32,9 +32,11 @@ Write the report in the language used by the requester. Include all sections bel
 
 When the user confirms that the repair is complete, add a separate revalidation record with a newly created MCP task ID. Compare it with the baseline task's input, terminal status, row count, required fields, and error/stop reason. Never report a resumed baseline task as a post-repair validation.
 
-After a successful revalidation, record the explicit completion confirmation and the fresh read/write verification for `当前状态 = 已完成`. If the user did not confirm or the owner changed to another person, record that the status remained `处理中` and why.
+After a successful revalidation, record that 原因 / 评论 / 截图 were **not** written until the user explicitly confirmed that write-up. If they were written, record that confirmation. `当前状态` stayed `处理中` unless `验收成功（需求人填写）` was already checked. Never report `已完成` from MCP success or a repair write-up alone.
 
-When the record is completed, include the exact `验收提示` content written to Base: confirmed cause, repair solution, and reproducible acceptance steps/criteria. If no estimate was supplied at claim time, state that `预计完成时间` was intentionally left blank.
+`当前状态 = 已完成` is allowed only after a fresh read shows `验收成功（需求人填写）` checked. Record that check, the write result, and `处理完成时间`. If the checkbox was empty, record that 已完成 was refused.
+
+When the repair note is written, include the exact `处理结果备注` content: confirmed cause, repair solution, and reproducible acceptance steps/criteria. If no estimate was supplied at claim time, state that `预计完成时间` was intentionally left blank.
 
 ## Diagnosis
 

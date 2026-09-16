@@ -9,7 +9,7 @@ Use this workflow to turn one eligible Feishu repair record into a reproducible 
 
 ## Boundaries
 
-- Treat Feishu Base, Template Admin, and RuleFile URLs as read-only for diagnosis. The user's explicit request to process/fix a named template authorizes only the guarded owner/status transitions in `Record Ownership And Status`; it does not authorize version creation or publishing.
+- Treat Feishu Base, Template Admin, and RuleFile URLs as read-only for diagnosis. The user's explicit request to process/fix a named template authorizes only the guarded owner/status transitions in `Record Ownership And Status`; it does not authorize version creation. Publishing (`bccc template publish`) is allowed only after the repair write-up **and** the user separately confirms changing 维护中 to 已发布.
 - Do not add a template version, set a current version, publish, or upload a repaired RuleFile unless the user separately authorizes that operation.
 - Never echo tokens, proxy credentials, cookies, authorization headers, or signed URL query values. Report their presence and risk without their values.
 - Preserve the downloaded RuleFile byte-for-byte at the template directory root. If implementation is requested, create `<id>-<slug>/fixed/` and put every repaired `.py` working copy there; never place a repaired file beside the original RuleFile.
@@ -41,18 +41,80 @@ When the user says to process/fix a specific template, first refresh that record
 - If `负责人` is already `杨伟铭`, ensure `当前状态 = 处理中` with an idempotent update and refresh `修复开始时间` only when beginning a new repair attempt; do not clear or replace other fields.
 - If `负责人` is any other person, do not change either field. Report that the template is already being handled by that person and stop unless the user explicitly says to force takeover (for example, `强制指定这个是我来改`). Only then may the owner be changed to 杨伟铭 and status set to 处理中.
 - Re-read immediately before the write, write both start fields together, then re-read to verify. If the owner changed between reads or the write result is ambiguous, stop and report the conflict instead of overwriting another worker. The CLI has no guaranteed compare-and-swap; do not pretend a local check is a global lock.
-- Use the Base's canonical field names from `+field-list`: in the current repair queue, the user-facing completion-time concept “修复处理完成时间” is stored in `处理完成时间`, the completion note is `处理结果备注`, and the validation screenshot column is `处理结果截图`. Resolve field IDs on every run; do not assume the legacy `验收提示` or `截图/测试文档` names still exist.
+- Use the Base's canonical field names from `+field-list`: in the current repair queue, the user-facing completion-time concept “修复处理完成时间” is stored in `处理完成时间`, the completion note is `处理结果备注`, the validation screenshot column is `处理结果截图`, and requester acceptance is `验收成功（需求人填写）`. Resolve field IDs on every run; do not assume the legacy `验收提示` or `截图/测试文档` names still exist.
 - When claiming the record, ask `预计多久可以完成？` before setting an estimate. If the user supplies a duration, calculate `预计完成时间` from the claim timestamp and write it with the start transition; if the user does not provide one, leave `预计完成时间` unchanged/blank and continue without guessing.
 - Record the previous owner/status/time fields, the guarded decision, the write result, and the post-write values in the report. Never log access tokens or user IDs beyond the display name needed for the audit.
 
-After a post-repair MCP revalidation task reaches the expected successful data result, ask `MCP 复验已通过，是否确认这个模板完成？` and wait for an explicit confirmation. If the user confirms, refresh the same record and the current field definitions, then:
+After a post-repair MCP revalidation task reaches the expected successful data result, **stop**. Do not write `处理结果备注`, do not add the @submitter comment, and do not upload `处理结果截图` on MCP success alone.
+
+Ask `MCP 复验已通过，是否把原因、评论和截图写回飞书？（此时不改当前状态为已完成）` and **wait for an explicit yes**. Silence, `已修复`, `开始验证`, or MCP passing is not that yes.
+
+If the user confirms, refresh the same record and the current field definitions, then:
 
 - Upload the validation screenshot to the attachment field whose canonical name is `处理结果截图` using `lark-cli base +record-upload-attachment` and the resolved field ID. Do not use the legacy `截图/测试文档` field when a newer result-screenshot column exists.
-- Update `当前状态 = 已完成`, `处理完成时间` to the current timestamp, and `处理结果备注` with a concise record-specific block containing **原因** (confirmed root cause), **修复方案** (implemented changes), and **验收方法** (the exact MCP input, expected non-zero/required-field criteria, and any remaining canary constraint). Preserve `负责人` and all other fields.
-- Read `需求提出人` from the refreshed record and create a Base record-local comment with `lark-cli drive +add-comment --type bitable --block-id <table-id>!<record-id>!<view-id>`. The comment content must start with a `mention_user` element for that submitter's open_id, then include the repair description, MCP result, and the fact that the screenshot is in `处理结果截图`.
+- Write `处理结果备注` with a concise record-specific block containing **原因** (confirmed root cause), **修复方案** (implemented changes), and **验收方法** (the exact MCP input, expected non-zero/required-field criteria, and any remaining canary constraint). Preserve `负责人` and all other fields.
+- **Do not** set `当前状态 = 已完成`. **Do not** write `处理完成时间`. Leave `当前状态 = 处理中` until the hard rule below is met.
+- Read `需求提出人` from the refreshed record and create a Base record-local comment with `lark-cli drive +add-comment --type bitable --block-id <table-id>!<record-id>!<view-id>`. The comment content must start with a `mention_user` element for that submitter's open_id, then include the repair description, MCP result, and the fact that the screenshot is in `处理结果截图`. Tell the submitter that they need to check `验收成功（需求人填写）` after they accept the result.
 - If the attachment field is not writable, do not pretend the upload succeeded: upload the screenshot to Drive, put its link in the same @submitter comment, and record the field-permission error in the report. If the comment or mention fails, report it rather than silently posting an unmentioned comment.
 
-If the owner is no longer 杨伟铭 (or is another non-empty owner), do not mark it complete; report the ownership conflict. If the user does not confirm, leave the record in 处理中 and do not set the completion time.
+Then, in the same repair write-up turn (still `处理中`), use `bccc` (not Template Admin HTTP by hand) for publish status and a cost check. Prefer `--json`. Use the environment that owns the template (`global-prod` for Octoparse overseas). If `bccc` cannot reach BC, set the local HTTP proxy plus `NODE_USE_ENV_PROXY=1`; do not print proxy credentials.
+
+1. Template catalog status (维护中 → 已发布)
+
+   Run `bccc --json template get <templateId>` and read `data.status`:
+
+   | `status` | Meaning |
+   |---|---|
+   | `0` | New / hidden |
+   | `1` | 已发布 (Published) |
+   | `2` | 维护中 (Maintaining) |
+   | `3` | Obsoleting |
+
+   If status is `2` (维护中), ask `当前模板状态是维护中，是否改为已发布？` and wait. Do not publish on silence.
+
+   If the user says yes, publish the current version only:
+
+   ```bash
+   bccc template publish <templateId> --version-id <currentVersionId> --yes
+   ```
+
+   Take `currentVersionId` from `data.currentVersion.templateVersionId` (or `data.currentVersion.id`) on the same get. Then `template get` again and confirm `status === 1`. Do not call `template maintain`. Do not invent a version ID.
+
+   If status is already `1`, skip the question. If `bccc` fails, report it and leave catalog status unchanged.
+
+2. Cost comment when the new version added paid exits
+
+   Compare the **pre-repair** RuleFile (the snapshot at `<id>-<slug>/` plus that version's `settings`) with the **post-repair current** RuleFile (`bccc --json template version get <templateId> <currentVersionId>` and its `ruleFile`). If the snapshot is missing, use the previous current version from `bccc --json template version list <templateId>`.
+
+   Detect only **newly added** capability (absent in old, present in new). Search file text case-insensitively; never print tokens, proxy userinfo, or API keys.
+
+   - **IP proxy added** when `settings.isUseProxy` went from false/absent to true, or the new RuleFile newly contains a residential/script proxy (`kkoip`, `ipweb`, `OCTOPARSE_MANAGED_PROXY`, `cloud/proxy`, `getProxy`) that the old file did not.
+   - **DataDome CapSolver added** when the new RuleFile newly uses CapSolver for DataDome (`capsolver` together with `datadome`, or a CapSolver DataDome task type that the old file did not have). CapSolver alone for another captcha is not this case.
+
+   If either fired, add a **separate** Base record-local comment (same `drive +add-comment` bitable block-id as the completion comment). Mention `需求提出人`. Chinese text, no secrets:
+
+   - IP proxy only: `本次修复新增加了 IP 代理，可能提高了成本，是否考虑要调整模板价格。`
+   - DataDome CapSolver only: `本次修复新增加了 DataDome 的 CapSolver 处理，可能提高了成本，是否考虑要调整模板价格。`
+   - Both: `本次修复新增加了 IP 代理和 DataDome 的 CapSolver 处理，可能提高了成本，是否考虑要调整模板价格。`
+
+   If neither fired, do not post this comment. Wait for the user before changing `pricePerData` or any price field.
+
+If the owner is no longer 杨伟铭 (or is another non-empty owner), do not write the repair note or mark it complete; report the ownership conflict. If the user does not confirm the write-up, leave the record in 处理中 and do not set the completion time.
+
+### Hard rule: `已完成` only after requester acceptance
+
+**Never** set `当前状态 = 已完成` because MCP passed, the user said the repair is done, or the write-up (原因 / 评论 / 截图) is finished.
+
+The only allowed trigger is that `验收成功（需求人填写）` is checked. Resolve that exact field from `+field-list` every run. Treat it as checked only when the refreshed cell is truthy (`true`, checked, `是`, or `1`). Empty, `false`, unchecked, or missing is not acceptance.
+
+When the user asks to set 已完成:
+
+1. Re-read the record immediately.
+2. If `验收成功（需求人填写）` is **not** checked, refuse. Report the current value and that 需求人 has not accepted. Do not write `当前状态` or `处理完成时间`, even if the user insists in the same turn.
+3. If it **is** checked, and `负责人` is still 杨伟铭, then set `当前状态 = 已完成` and `处理完成时间` to now (or leave `处理完成时间` to the table auto-fill when that field is not writable). Re-read to verify.
+4. If the owner changed, stop and report the conflict.
+
+Do not check `验收成功（需求人填写）` yourself. That column is for the requester.
 
 ## Prepare The Template
 
