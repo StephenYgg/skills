@@ -214,7 +214,7 @@ Do **not** copy the Template. Copy the **TemplateVersion**.
 
    Example: `20260916 stephen 修复了Google Play搜索页旧XPath失效导致0数据，处理了稳定详情链接解析并迁移304 SDK`
 
-This is **not** `bccc template publish` (catalog status 1). After set-current, MCP uses the new current RuleFile. Then run the pre-acceptance field audit.
+This is **not** `bccc template publish` (catalog status 1). After set-current, if the RuleFile is a 304 SDK script, set Template `groupId` to `304` (see SDK Migration step 7) **before** MCP. Then run the pre-acceptance field audit.
 
 ## MCP Execute And Revalidate
 
@@ -240,6 +240,16 @@ When the user confirms migration:
 4. Include a local argparse/JSON debug path, but keep platform execution as the default when invoked without CLI arguments. Convert output values to strings when the dataset contract requires it.
 5. Run `py_compile`, `--help`, the migration unit/fixture tests, and one bounded smoke using the issue's input. If the SDK or cloud runner is unavailable locally, report the exact dependency/runtime gap instead of installing packages dynamically.
 6. Update the repair report with the migration path, SHA-256, 304-group classification, behavioral differences, validation results, and any cloud acceptance gap. The migration report must include the same concurrency/resource-bound review as the repair candidate.
+7. **Cluster group 304 (required for a shipped 304 SDK RuleFile).** The octopus-platform-sdk script only runs on cluster group 304. After `version set-current` of that RuleFile, set the **Template** `groupId` to `304` before MCP. Do not copy a Template; update the existing one:
+
+   ```bash
+   bccc --json template get <templateId>
+   # PUT with the GET fields plus groupId: 304 (name is required; keep status/kinds/users)
+   bccc --json template update <templateId> --file body.json
+   bccc --json template get <templateId>   # confirm data.groupId === 304
+   ```
+
+   If `groupId` is null, the dispatcher may send the task to group 8 and the SDK process `ExecutorCrashed` with 0 rows. This is not a parser failure. Confirm `groupId` is 304 before treating a 0-row MCP as a script bug.
 
 ### 1053 KKoip/static proxy integration
 
