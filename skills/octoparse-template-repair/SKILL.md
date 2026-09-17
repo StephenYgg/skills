@@ -18,6 +18,16 @@ Use this workflow to turn one eligible Feishu repair record into a reproducible 
 
 ## Find Eligible Records
 
+Speak using Feishu **table name + view name**. Deduplicate by 模板ID.
+
+| 表 | 视图 | table / view |
+|---|---|---|
+| PY模板修缮需求 | PY模板修复需求 | `tblEsTqAFIAgzkQv` / `vewW32R8DZ` |
+| 重点模板异常-监控同步 | PY模板修复需求 | `tblmFq6Mkwd2ZJlj` / `vewW32R8DZ` |
+| 模板启动异常-监控同步 | PY模板修复需求 | `tblcrcBlp4XIAiVZ` / `vewW32R8DZ` |
+
+`重点模板异常-监控同步` also has views `时间排序和0数据` and `时间排序和字段缺失`. `模板启动异常-监控同步` also has view `异常启动` (checkboxes `已处理/修复`, `验证正常（误报）`). Do not start `重点模板异常-监控同步` unless asked.
+
 Run:
 
 ```bash
