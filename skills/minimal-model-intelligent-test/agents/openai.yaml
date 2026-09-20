@@ -1,0 +1,4 @@
+interface:
+  display_name: "Minimal Model Intelligent Test"
+  short_description: "Offline model snapshot and SVG animation"
+  default_prompt: "Use $minimal-model-intelligent-test to test model intelligence with one offline HTML containing a known model snapshot and an SVG pelican-on-bicycle animation, then open it."
