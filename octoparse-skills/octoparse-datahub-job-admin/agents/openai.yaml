@@ -1,0 +1,4 @@
+interface:
+  display_name: "Octoparse DataHub Administration"
+  short_description: "Manage DataHub Jobs, Plans and Steps safely with bccc"
+  default_prompt: "Use $octoparse-datahub-job-admin to configure the requested DataHub Job and Plan without starting it."

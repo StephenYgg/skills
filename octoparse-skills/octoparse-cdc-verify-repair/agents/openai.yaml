@@ -1,0 +1,4 @@
+interface:
+  display_name: "Octoparse CDC Verification"
+  short_description: "Verify CDC progress and diagnose incomplete ingestion"
+  default_prompt: "Use $octoparse-cdc-verify-repair to compare source and StarRocks data and diagnose the current CDC execution."

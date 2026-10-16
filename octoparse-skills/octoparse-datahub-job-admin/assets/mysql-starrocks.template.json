@@ -1,0 +1,53 @@
+{
+  "env": {
+    "parallelism": 1,
+    "job.mode": "STREAMING",
+    "checkpoint.interval": 60000,
+    "checkpoint.timeout": 600000,
+    "read_limit.bytes_per_second": 2097152,
+    "read_limit.rows_per_second": 2000
+  },
+  "source": [
+    {
+      "plugin_name": "MySQL-CDC",
+      "url": "jdbc:mysql://<source-host>:3306/<source-database>",
+      "username": "<source-runtime-user>",
+      "password": "<source-runtime-password>",
+      "startup.mode": "initial",
+      "schema-changes.enabled": false,
+      "server-time-zone": "<verified-source-time-zone>",
+      "table-names": [
+        "SOURCE_DB.BUSINESS_TABLE"
+      ],
+      "connection.pool.size": 4,
+      "snapshot.split.size": 8096,
+      "snapshot.fetch.size": 1024,
+      "connect.max-retries": 3
+    }
+  ],
+  "sink": [
+    {
+      "plugin_name": "StarRocks",
+      "base-url": "jdbc:mysql://<target-fe-host>:9030/",
+      "nodeUrls": [
+        "<target-fe-host>:8030"
+      ],
+      "username": "<target-runtime-user>",
+      "password": "<target-runtime-password>",
+      "database": "<target-database>",
+      "table": "ods_<business-domain>_${table_name}",
+      "enable_upsert_delete": true,
+      "schema_save_mode": "ERROR_WHEN_SCHEMA_NOT_EXIST",
+      "data_save_mode": "APPEND_DATA",
+      "batch_max_rows": 1000,
+      "batch_max_bytes": 4194304,
+      "max_retries": 3,
+      "starrocks.config": {
+        "format": "JSON",
+        "strip_outer_array": "true",
+        "strict_mode": "true",
+        "max_filter_ratio": "0"
+      }
+    }
+  ]
+}

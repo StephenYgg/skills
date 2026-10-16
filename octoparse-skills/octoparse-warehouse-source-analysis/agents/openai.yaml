@@ -1,0 +1,4 @@
+interface:
+  display_name: "Octoparse Source Analysis"
+  short_description: "Explain source tables using application code and dbbb"
+  default_prompt: "Use $octoparse-warehouse-source-analysis to explain this service's tables and recommend a CDC scope."

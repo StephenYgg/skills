@@ -1,0 +1,4 @@
+interface:
+  display_name: "Octoparse StarRocks Schema"
+  short_description: "Design commented, version-compatible StarRocks CDC DDL"
+  default_prompt: "Use $octoparse-starrocks-cdc-schema to prepare StarRocks DDL for the selected source tables."

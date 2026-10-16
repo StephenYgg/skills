@@ -1,0 +1,4 @@
+interface:
+  display_name: "Octoparse CDC Onboarding"
+  short_description: "Onboard business tables into the Octoparse warehouse"
+  default_prompt: "Use $octoparse-cdc-onboarding to analyze this service and prepare its authorized CDC pipeline."
